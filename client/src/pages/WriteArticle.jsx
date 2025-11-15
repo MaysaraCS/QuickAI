@@ -5,6 +5,7 @@ import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 
+// Set the base URL for axios
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 const WriteArticle = () => {
@@ -15,7 +16,7 @@ const WriteArticle = () => {
   ];
 
   const [selectedLength, setSelectedLength] = React.useState(articleLength[0]);
-  const [input, setInput] = React.useState("");
+  const [input, setInput] = React.useState('');
 
   const [loading, setLoading] = useState(false)
   const [content, setContent] = useState('');
@@ -24,48 +25,24 @@ const WriteArticle = () => {
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
-    try{
-      setLoading(true)
+    try {
+      setLoading(true);
+      const prompt = `Write an article about ${input} in ${selectedLength.text}`;
 
-      // Handle potential auth token issues
-      let token;
-      try {
-        token = await getToken();
-        if (!token) {
-          toast.error('Please log in to continue');
-          return;
-        }
-      } catch (authError) {
-        console.log('Auth error:', authError);
-        toast.error('Authentication failed. Please check your internet connection and try logging in again.');
-        return;
-      }
-
-      const prompt = `Write an article about ${input} in ${selectedLength.text}`
-
-      const {data} = await axios.post('/ai/generate-article', {prompt, 
-        length:selectedLength.length
+      const { data } = await axios.post('/ai/generate-article', {
+        prompt, 
+        length: selectedLength.length
       }, {
-          headers: {Authorization: `Bearer ${token}`}
-        })
+        headers: { Authorization: `Bearer ${await getToken()}` }
+      });
 
-      // debugging
-      console.log('API Response:', data); 
-
-      if(data.success && data.data.length > 0 ){
-        console.log('Data Success : ', data.success)
-        setContent(data.data[0].content)
-        toast.success(data.message || 'Article generated successfully!');
+      if (data.success && data.data.length > 0) {
+        console.log('Data Success : ', data.success);
       }
-      else{
-        toast.error(data.message || 'Failed to generate article')
-      }
-    } catch(error){
-        console.log('API error:', error);
-        toast.error(`Error: ${error.message}`);
-    } finally {
-      setLoading(false);
+    } catch (error) { // Moved catch to proper position
+      toast.error(error.message);
     }
+    setLoading(false);
   };
 
   return (
