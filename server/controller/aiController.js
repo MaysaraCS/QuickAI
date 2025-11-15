@@ -231,11 +231,3 @@ export const resumeReview    = asyncHandler(async (req, res) => {
     }
 });
 
-export {
-    generateArticle,
-    generateBlogTitle,
-    generateImage,
-    removeImageBackground,
-    removeImageObject,
-    resumeReview
-}
