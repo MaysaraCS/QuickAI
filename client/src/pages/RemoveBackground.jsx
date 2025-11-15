@@ -18,6 +18,7 @@ const RemoveBackground = () => {
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+
     if (!input) {
       alert("Please upload an image first!");
       return;
@@ -25,48 +26,23 @@ const RemoveBackground = () => {
     console.log("Uploaded file:", input);
 
     try {
-      setLoading(true)
+      setLoading(true);
+      const formData = new FormData();
+      formData.append('image', input);
+      
+      const { data } = await axios.post('/api/ai/remove-image-background', 
+       formData,
+       {headers: {Authorization: `Bearer ${await getToken()}`}});
 
-      // Handle potential auth token issues
-      let token;
-      try {
-        token = await getToken();
-        if (!token) {
-          toast.error('Please log in to continue');
-          return;
-        }
-      } catch (authError) {
-        console.log('Auth error:', authError);
-        toast.error('Authentication failed. Please check your internet connection and try logging in again.');
-        return;
+      if (data.success) {
+        setContent(data.content);
+      }else{
+        toast.error(data.message)
       }
-
-      const formData = new FormData()
-      formData.append('image', input)
-
-      const { data } = await axios.post('ai/remove-image-background', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
-      // debugging
-      console.log('API Response:', data);
-
-      if (data.success && data.data.length > 0) {
-        console.log('Data Success : ', data.success)
-        setContent(data.data[0].content)
-        toast.success(data.message || 'Image background removed successfully!');
-      }
-      else {
-        toast.error(data.message || 'Failed to remove image background')
-      }
-
-    } catch (error) {
-      console.log('API error:', error);
-      toast.error(`Error: ${error.message}`);
+    } catch (error) { 
+      toast.error(error.message);
     }
-    finally {
-      setLoading(false);
-    }
+    setLoading(false);
   };
 
   return (

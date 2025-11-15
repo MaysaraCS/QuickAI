@@ -27,53 +27,28 @@ const RemoveObject = () => {
     // Here you can call your background removal API
 
     try {
-      setLoading(true)
+      setLoading(true);
 
-      // Handle potential auth token issues
-      let token;
-      try {
-        token = await getToken();
-        if (!token) {
-          toast.error('Please log in to continue');
-          return;
-        }
-      } catch (authError) {
-        console.log('Auth error:', authError);
-        toast.error('Authentication failed. Please check your internet connection and try logging in again.');
-        return;
+      if(object.split('').length > 1){
+        return toast.error("Please enter only single object name to remove")
       }
+      const formData = new FormData();
+      formData.append('image', input);
+      formData.append('object', object);
+      
+      const { data } = await axios.post('/api/ai/remove-image-object', 
+       formData,
+       {headers: {Authorization: `Bearer ${await getToken()}`}});
 
-      if (object.trim().split(' ').length > 1) {
-        toast.error('Please enter only one object name.');
+      if (data.success) {
+        setContent(data.content);
+      }else{
+        toast.error(data.message)
       }
-
-      const formData = new FormData()
-      formData.append('image', input)
-      formData.append('object', object)
-
-      const { data } = await axios.post('ai/remove-image-object', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
-      // debugging
-      console.log('API Response:', data);
-
-      if (data.success && data.data.length > 0) {
-        console.log('Data Success : ', data.success)
-        setContent(data.data[0].content)
-        toast.success(data.message || 'Object removed successfully!');
-      }
-      else {
-        toast.error(data.message || 'Failed to remove image background')
-      }
-
-    } catch (error) {
-      console.log('API error:', error);
-      toast.error(`Error: ${error.message}`);
+    } catch (error) { 
+      toast.error(error.message);
     }
-    finally {
-      setLoading(false);
-    }
+    setLoading(false);
   };
 
   return (

@@ -29,14 +29,14 @@ const WriteArticle = () => {
       setLoading(true);
       const prompt = `Write an article about ${input} in ${selectedLength.text}`;
 
-      const { data } = await axios.post('/ai/generate-article', {
+      const { data } = await axios.post('/api/ai/generate-article', {
         prompt, 
         length: selectedLength.length
       }, {
         headers: { Authorization: `Bearer ${await getToken()}`}});
 
       if (data.success) {
-        setContent('Data Success : ', data.success);
+        setContent(data.content);
       }else{
         toast.error(data.message)
       }

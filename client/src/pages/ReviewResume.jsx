@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
 import FormData from "form-data";
-import ReactMarkdown from "react-markdown";
+import Markdown from "react-markdown";
 
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
@@ -24,50 +24,26 @@ const ReviewResume = () => {
     }
     console.log("Uploaded file:", input);
     // Here you can call your background removal API
-
     try {
-      setLoading(true)
+      setLoading(true);
 
-      // Handle potential auth token issues
-      let token;
-      try {
-        token = await getToken();
-        if (!token) {
-          toast.error('Please log in to continue');
-          return;
-        }
-      } catch (authError) {
-        console.log('Auth error:', authError);
-        toast.error('Authentication failed. Please check your internet connection and try logging in again.');
-        return;
+      const formData = new FormData();
+      formData.append('resume', input);
+      
+      const { data } = await axios.post('/api/ai/resume-review', 
+       formData,
+       {headers: {Authorization: `Bearer ${await getToken()}`}});
+
+      if (data.success) {
+        setContent(data.content);
+      }else{
+        toast.error(data.message)
       }
-
-      const formData = new FormData()
-      formData.append('resume', input)
-
-      const { data } = await axios.post('ai/resume-review', formData, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
-      // debugging
-      console.log('API Response:', data);
-
-      if (data.success && data.data.length > 0) {
-        console.log('Data Success : ', data.success)
-        setContent(data.data[0].content)
-        toast.success(data.message || 'Resume reviewed successfully!');
-      }
-      else {
-        toast.error(data.message || 'Failed to review resume')
-      }
-
-    } catch (error) {
-      console.log('API error:', error);
-      toast.error(`Error: ${error.message}`);
+    } catch (error) { 
+      toast.error(error.message);
     }
-    finally {
-      setLoading(false);
-    }
+    setLoading(false);
+    
   };
   return (
     <div className="h-full overflow-y-scroll p-6 flex items-start flex-wrap gap-4 text-slate-700">
@@ -126,9 +102,9 @@ const ReviewResume = () => {
           ) : (
             <div className="mt-3 h-full overflow-y-scroll text-sm text-slate-600">
               <div className="reset-tw">
-                <ReactMarkdown>
+                <Markdown>
                   {content}
-                </ReactMarkdown>
+                </Markdown>
               </div>
             </div>
           )
