@@ -12,134 +12,45 @@ const Community = () => {
   const [creations, setCreations] = useState([])
   const { user } = useUser()
 
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const { getToken } = useAuth();
 
   // Prevent rapid double-clicks
-  const likingRef = useRef(new Set());
+  //const likingRef = useRef(new Set());
 
-  const fetchCreations = async (silent = false) => {
+  const fetchCreations = async () => {
     // setCreations(dummyPublishedCreationData)
     try {
-
-      setLoading(true)
-      let token = await getToken();
-      if (!token) {
-        toast.error("Please log in to continue");
-        return;
-      }
-
-      const { data } = await axios.get('/get-published-creations', {
-        headers: { Authorization: `Bearer ${token}` }
+      const { data } = await axios.get('/api/user/get-published-creations', {
+        headers: { Authorization: `Bearer ${await getToken()}` }
       })
-
-      // debugging
-      // console.log('API Response:', data);
-
-      if (data.success && data.data.length > 0) {
-        // console.log('Data Success : ', data.success)
-        setCreations(data.data)
-        if (!silent) toast.success(data.message || 'Published creations loaded successfully!');
-      }
-      else {
-        toast.error(data.message || 'Failed to load published creations')
-      }
-
-    } catch (error) {
-      // console.log('API error:', error);
-      toast.error(`Error: ${error.message}`);
-    }
-    finally {
-      setLoading(false);
-    }
-  }
-
-  const imageLikeToggle = useCallback(async (id) => {
-
-    // Prevent multiple simultaneous requests for the same creation
-    if (likingRef.current.has(id)) return;
-
-    // Validate ID
-    if (!id) return toast.error('Invalid creation ID');
-
-    likingRef.current.add(id);
-
-    try {
-      const token = await getToken();
-      if (!token) return toast.error("Please log in to continue");
-
-      // Find the current creation before making changes
-      const currentCreation = creations.find(c => c.id === id);
-      if (!currentCreation) return toast.error('Creation not found');
-
-      // Save original state for potential rollback
-      const originalLikes = [...currentCreation.likes];
-
-      // Calculate optimistic update
-      const isCurrentlyLiked = currentCreation.likes.includes(user?.id);
-      const optimisticLikes = isCurrentlyLiked
-        ? currentCreation.likes.filter(userId => userId !== user?.id)
-        : [...currentCreation.likes, user?.id];
-
-      // 1. IMMEDIATE UI UPDATE (Optimistic)
-      setCreations((prev) =>
-        prev.map((c) =>
-          c.id === id ? { ...c, likes: optimisticLikes } : c
-        )
-      );
-
-      // 2. Make API call in background
-      const { data } = await axios.post('/toggle-like-creation', { id }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
-      // Debug
-      // console.log('Full server response:', data);
 
       if (data.success) {
-        // 3. Sync with server response (usually matches optimistic update)
-        // console.log('Data Success : ', data.success)
-        setCreations((prev) =>
-          prev.map((c) =>
-            c.id === id ? { ...c, likes: data.data.likes } : c
-          )
-        );
-
-        // Show success toast
-        const isLiked = data.data.likes.includes(user?.id);
-        toast.success(isLiked ? 'Liked Creation!' : 'Like Removed');
-      } else {
-        // 4. Revert on failure
-        setCreations((prev) =>
-          prev.map((c) =>
-            c.id === id ? { ...c, likes: originalLikes } : c
-          )
-        );
-
-        toast.error(data.message || 'Failed to update like. Please try again.');
-        // await fetchCreations(true)
+        setCreations(data.creations);
+      }else{
+        toast.error(data.message)
       }
-
     } catch (error) {
-      // 5. Revert on error
-      const originalCreation = creations.find(c => c.id === id);
-      if (originalCreation) {
-        setCreations((prev) =>
-         prev.map((c) =>
-           c.id === id ? { ...c, likes: originalCreation.likes } : c
-         )
-       );
-      }
-
-      console.log('API error:', error);
-      toast.error(`Error: ${error.message}`);
-      toast.error('Like action failed, reverted.');
-    } finally {
-      // Always remove from set when done
-      likingRef.current.delete(id);
+      // console.log('API error:', error);
+        toast.error(error.message);
     }
-  }, [creations, user?.id, getToken]
-  );
+      setLoading(false);
+  }
+
+  const imageLikeToggle = async(id) => {
+    try {
+      const { data } = await axios.post('/api/user/get-published-creations',{id}, {
+        headers: { Authorization: `Bearer ${await getToken()}` }});
+        if(data.success){
+          toast.success(data.message)
+          await fetchCreations()
+        }else{
+          toast.error(data.message)
+        }
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
 
   useEffect(() => {
     if (user) {
