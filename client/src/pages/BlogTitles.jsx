@@ -19,10 +19,9 @@ const BlogTitles = () => {
     "Education",
   ];
 
-  const [selectedCategory, setSelectedCategory] = useState(blogCategories['General']);
+  const [selectedCategory, setSelectedCategory] = useState(blogCategories[0]);
   const [input, setInput] = useState('');
-
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
   const [content, setContent] = useState('');
 
   const { getToken } = useAuth();
@@ -33,17 +32,22 @@ const BlogTitles = () => {
     try {
       setLoading(true);
       const prompt = `Generate a blog title for the keyword ${input} in the category ${selectedCategory}`;
+      
       const { data } = await axios.post('/api/ai/generate-blog-title', {
         prompt
       }, {
-        headers: { Authorization: `Bearer ${await getToken()}`}});
+        headers: { Authorization: `Bearer ${await getToken()}` }
+      });
+
       if (data.success) {
-        setContent('Data Success : ', data.success);
-      }else{
-        toast.error(data.message)
+        setContent(data.content);
+        toast.success('Blog title generated successfully!');
+      } else {
+        toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.message)
+      console.error('Generate blog title error:', error);
+      toast.error(error.response?.data?.message || error.message);
     }
     setLoading(false);
   }
@@ -87,12 +91,16 @@ const BlogTitles = () => {
           ))}
         </div>
 
-        <button disabled={loading}
+        <button 
+          disabled={loading}
           className="w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#C341F6]
           to-[#8E37EB] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer disabled:opacity-80"
         >
-          {loading ? <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span> : <Hash className="w-5" />}
-          
+          {loading ? (
+            <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
+          ) : (
+            <Hash className="w-5" />
+          )}
           Generate Title
         </button>
       </form>
@@ -106,25 +114,20 @@ const BlogTitles = () => {
           <Hash className="w-5 h-5 text-[#8E37EB]" />
           <h1 className="text-xl font-semibold">Generated title</h1>
         </div>
-          {
-            !content ? (
-              <div className="flex-1 flex justify-center items-center">
-                <div className="text-sm flex flex-col items-center gap-5 text-gray-400">
-                  <Hash className="w-9 h-9" />
-                  <p>Enter a topic and click "Generate titles" to get started</p>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-3 h-full overflow-y-scroll text-sm text-slate-600">
-                <div className="reset-tw">
-                  <Markdown>
-                    {content}
-                  </Markdown>
-                </div>
-              </div>
-            )
-          }
-        
+        {!content ? (
+          <div className="flex-1 flex justify-center items-center">
+            <div className="text-sm flex flex-col items-center gap-5 text-gray-400">
+              <Hash className="w-9 h-9" />
+              <p>Enter a topic and click "Generate titles" to get started</p>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3 h-full overflow-y-scroll text-sm text-slate-600">
+            <div className="reset-tw">
+              <Markdown>{content}</Markdown>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

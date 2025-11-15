@@ -5,7 +5,6 @@ import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
 import Markdown from "react-markdown";
 
-// Set the base URL for axios
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 const WriteArticle = () => {
@@ -15,10 +14,9 @@ const WriteArticle = () => {
     { length: 1600, text: "long (1200+ words)" },
   ];
 
-  const [selectedLength, setSelectedLength] = React.useState(articleLength[0]);
-  const [input, setInput] = React.useState('');
-
-  const [loading, setLoading] = useState(false)
+  const [selectedLength, setSelectedLength] = useState(articleLength[0]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
   const [content, setContent] = useState('');
 
   const { getToken } = useAuth();
@@ -33,15 +31,18 @@ const WriteArticle = () => {
         prompt, 
         length: selectedLength.length
       }, {
-        headers: { Authorization: `Bearer ${await getToken()}`}});
+        headers: { Authorization: `Bearer ${await getToken()}` }
+      });
 
       if (data.success) {
         setContent(data.content);
-      }else{
-        toast.error(data.message)
+        toast.success('Article generated successfully!');
+      } else {
+        toast.error(data.message);
       }
-    } catch (error) { 
-      toast.error(error.message);
+    } catch (error) {
+      console.error('Generate article error:', error);
+      toast.error(error.response?.data?.message || error.message);
     }
     setLoading(false);
   };
@@ -86,14 +87,16 @@ const WriteArticle = () => {
           ))}
         </div>
 
-        <button disabled = {loading}
+        <button 
+          disabled={loading}
           className="w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#226BFF]
           to-[#65ADFF] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer disabled:opacity-80"
         >
-          {
-            loading ? <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
-            : <Edit className="w-5" />
-          }
+          {loading ? (
+            <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
+          ) : (
+            <Edit className="w-5" />
+          )}
           Generate Article
         </button>
       </form>
@@ -110,21 +113,18 @@ const WriteArticle = () => {
 
         {!content ? (
           <div className="flex-1 flex justify-center items-center">
-          <div className="text-sm flex flex-col items-center gap-5 text-gray-400">
-            <Edit className="w-9 h-9" />
-            <p>Enter a topic and click "Generate Article" to get started</p>
+            <div className="text-sm flex flex-col items-center gap-5 text-gray-400">
+              <Edit className="w-9 h-9" />
+              <p>Enter a topic and click "Generate Article" to get started</p>
+            </div>
           </div>
-        </div>
         ) : (
           <div className="mt-3 h-full overflow-y-scroll text-sm text-slate-600">
             <div className="reset-tw">
-              <Markdown>
-                {content}
-              </Markdown>
+              <Markdown>{content}</Markdown>
             </div>
           </div>
         )}
-        
       </div>
     </div>
   );

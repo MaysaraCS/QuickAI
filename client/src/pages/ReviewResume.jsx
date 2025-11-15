@@ -3,27 +3,25 @@ import React, { useState } from 'react'
 import axios from 'axios';
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
-import FormData from "form-data";
 import Markdown from "react-markdown";
 
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 const ReviewResume = () => {
   const [input, setInput] = useState(null);
-
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
   const [content, setContent] = useState('');
 
   const { getToken } = useAuth();
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+    
     if (!input) {
-      alert("Please upload an resume first!");
+      toast.error("Please upload a resume first!");
       return;
     }
-    console.log("Uploaded file:", input);
-    // Here you can call your background removal API
+
     try {
       setLoading(true);
 
@@ -31,20 +29,28 @@ const ReviewResume = () => {
       formData.append('resume', input);
       
       const { data } = await axios.post('/api/ai/resume-review', 
-       formData,
-       {headers: {Authorization: `Bearer ${await getToken()}`}});
+        formData,
+        {
+          headers: { 
+            Authorization: `Bearer ${await getToken()}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
 
       if (data.success) {
         setContent(data.content);
-      }else{
-        toast.error(data.message)
+        toast.success('Resume reviewed successfully!');
+      } else {
+        toast.error(data.message);
       }
     } catch (error) { 
-      toast.error(error.message);
+      console.error('Resume review error:', error);
+      toast.error(error.response?.data?.message || error.message);
     }
     setLoading(false);
-    
   };
+
   return (
     <div className="h-full overflow-y-scroll p-6 flex items-start flex-wrap gap-4 text-slate-700">
       {/* left col */}
@@ -63,20 +69,24 @@ const ReviewResume = () => {
           type="file"
           accept="application/pdf"
           className="w-full p-2 px-3 mt-2 outline-none text-sm rounded-md border border-gray-300 text-gray-600"
-          required />
+          required 
+        />
 
         <p className="text-xs text-gray-500 font-light mt-1">
-          Supports pdf resume only
+          Supports PDF resume only (Max 5MB)
         </p>
 
-        <button disabled={loading}
+        <button 
+          disabled={loading}
           type="submit"
           className="w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#009bb3]
           to-[#009bb3] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer disabled:opacity-80"
         >
-          {loading ? <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
-            : <FileText className="w-5" />}
-
+          {loading ? (
+            <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
+          ) : (
+            <FileText className="w-5" />
+          )}
           Review Resume
         </button>
       </form>
@@ -91,25 +101,20 @@ const ReviewResume = () => {
           <h1 className="text-xl font-semibold">Analysis Results</h1>
         </div>
 
-        {
-          !content ? (
-            <div className="flex-1 flex justify-center items-center">
-              <div className="text-sm flex flex-col items-center gap-5 text-gray-400">
-                <FileText className="w-9 h-9" />
-                <p>Upload an Resume and click "Review Resume " to get started</p>
-              </div>
+        {!content ? (
+          <div className="flex-1 flex justify-center items-center">
+            <div className="text-sm flex flex-col items-center gap-5 text-gray-400">
+              <FileText className="w-9 h-9" />
+              <p>Upload a Resume and click "Review Resume" to get started</p>
             </div>
-          ) : (
-            <div className="mt-3 h-full overflow-y-scroll text-sm text-slate-600">
-              <div className="reset-tw">
-                <Markdown>
-                  {content}
-                </Markdown>
-              </div>
+          </div>
+        ) : (
+          <div className="mt-3 h-full overflow-y-scroll text-sm text-slate-600">
+            <div className="reset-tw">
+              <Markdown>{content}</Markdown>
             </div>
-          )
-        }
-
+          </div>
+        )}
       </div>
     </div>
   )

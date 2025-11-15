@@ -3,50 +3,56 @@ import React, { useState } from 'react'
 import axios from 'axios';
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
-import FormData from "form-data";
 
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 const RemoveObject = () => {
-
   const [input, setInput] = useState(null);
   const [object, setObject] = useState("");
-
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
   const [content, setContent] = useState('');
 
   const { getToken } = useAuth();
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+    
     if (!input) {
-      alert("Please upload an image first!");
+      toast.error("Please upload an image first!");
       return;
     }
-    console.log("Uploaded file:", input);
-    // Here you can call your background removal API
+
+    if (!object.trim()) {
+      toast.error("Please describe the object to remove!");
+      return;
+    }
 
     try {
       setLoading(true);
 
-      if(object.split('').length > 1){
-        return toast.error("Please enter only single object name to remove")
-      }
       const formData = new FormData();
       formData.append('image', input);
       formData.append('object', object);
       
       const { data } = await axios.post('/api/ai/remove-image-object', 
-       formData,
-       {headers: {Authorization: `Bearer ${await getToken()}`}});
+        formData,
+        {
+          headers: { 
+            Authorization: `Bearer ${await getToken()}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
 
       if (data.success) {
         setContent(data.content);
-      }else{
-        toast.error(data.message)
+        toast.success('Object removed successfully!');
+      } else {
+        toast.error(data.message);
       }
     } catch (error) { 
-      toast.error(error.message);
+      console.error('Remove object error:', error);
+      toast.error(error.response?.data?.message || error.message);
     }
     setLoading(false);
   };
@@ -69,26 +75,30 @@ const RemoveObject = () => {
           type="file"
           accept="image/*"
           className="w-full p-2 px-3 mt-2 outline-none text-sm rounded-md border border-gray-300 text-gray-600"
-          required />
+          required 
+        />
 
-        <p className="mt-6 text-sm font-medium">Describe object name to remove</p>
+        <p className="mt-6 text-sm font-medium">Describe object to remove</p>
         <textarea
           onChange={(e) => setObject(e.target.value)}
           value={object}
           rows={4}
           className="w-full p-2 px-3 mt-2 outline-none text-sm rounded-md border"
-          placeholder="e.g.,watch on spoon , only single object name..."
+          placeholder="e.g., person, car, tree (describe one object)"
           required
         />
 
-        <button disabled={loading}
+        <button 
+          disabled={loading}
           type="submit"
           className="w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#417Df6]
           to-[#8e37e8] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer disabled:opacity-80"
         >
-          {loading ? <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
-            : <Scissors className="w-5" />}
-
+          {loading ? (
+            <span className="w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin"></span>
+          ) : (
+            <Scissors className="w-5" />
+          )}
           Remove Object
         </button>
       </form>
@@ -103,21 +113,18 @@ const RemoveObject = () => {
           <h1 className="text-xl font-semibold">Processed Image</h1>
         </div>
 
-        {
-          !content ? (
-            <div className="flex-1 flex justify-center items-center">
-              <div className="text-sm flex flex-col items-center gap-5 text-gray-400">
-                <Scissors className="w-9 h-9" />
-                <p>Upload an image and click "Remove object" to get started</p>
-              </div>
+        {!content ? (
+          <div className="flex-1 flex justify-center items-center">
+            <div className="text-sm flex flex-col items-center gap-5 text-gray-400">
+              <Scissors className="w-9 h-9" />
+              <p>Upload an image and click "Remove object" to get started</p>
             </div>
-          ) : (
-            <div className="mt-3 h-full">
-              <img src={content} alt='image' className='h-full w-full' />
-            </div>
-          )
-        }
-
+          </div>
+        ) : (
+          <div className="mt-3 h-full flex items-center justify-center">
+            <img src={content} alt='Processed image' className='max-h-full max-w-full rounded-lg' />
+          </div>
+        )}
       </div>
     </div>
   )

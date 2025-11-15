@@ -1,7 +1,6 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Route, Routes } from 'react-router-dom'
 import Home from "./pages/Home";
-
 import Layout from "./pages/Layout";
 import Dashboard from "./pages/Dashboard.jsx";
 import WriteArticle from "./pages/WriteArticle.jsx";
@@ -11,30 +10,23 @@ import RemoveBackground from "./pages/RemoveBackground.jsx";
 import RemoveObject from "./pages/RemoveObject.jsx";
 import ReviewResume from "./pages/ReviewResume.jsx";
 import Community from "./pages/Community.jsx";
-// import { useAuth } from '@clerk/clerk-react';
 import { Toaster } from 'react-hot-toast';
 
 const App = () => {
-  
-  // const {getToken} =  useAuth()
-  // useEffect(() => {
-  //   getToken().then((token) => console.log("Clerk Token:", token));
-  // },[])
-
   return (
     <div>
+      <Toaster />
       <Routes>
-        <Toaster/>
         <Route path="/" element={<Home />} /> 
-          <Route path="/ai" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="write-article" element={<WriteArticle />} />
-            <Route path="blog-titles" element={<BlogTitles />} />
-            <Route path="generate-images" element={<GenerateImages />} />
-            <Route path="remove-background" element={<RemoveBackground />} />
-            <Route path="remove-object" element={<RemoveObject />} />
-            <Route path="resume-review" element={<ReviewResume />} />
-            <Route path="Community" element={<Community />} />
+        <Route path="/ai" element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="write-article" element={<WriteArticle />} />
+          <Route path="blog-titles" element={<BlogTitles />} />
+          <Route path="generate-images" element={<GenerateImages />} />
+          <Route path="remove-background" element={<RemoveBackground />} />
+          <Route path="remove-object" element={<RemoveObject />} />
+          <Route path="resume-review" element={<ReviewResume />} />
+          <Route path="community" element={<Community />} />
         </Route>
       </Routes>
     </div>
