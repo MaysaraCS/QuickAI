@@ -3,3 +3,17 @@ npm install
 npm install react-router-dom
 npm install lucide-react
 npm install tailwindcss @tailwindcss/vite
+npm install @clerk/clerk-react
+// server
+npm init -y
+npm install express dotenv cors axios cloudinary multer
+npm install --save-dev nodemon
+npm install @neondatabase/serverless
+npm install @clerk/express
+npm install openai
+npm install pdf-parse
+
+// client
+npm install axios
+npm install react-hot-toast
+npm install react-markdown
