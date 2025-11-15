@@ -11,42 +11,28 @@ axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
 
 const Dashboard = () => {
-  const [creation, setCreations] = React.useState([]);
+  const [creation, setCreations] = useState([]);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { getToken } = useAuth();
 
   const getDashboardData = async () => {
     // setCreation(dummyCreationData);
     try {
-
-      setLoading(true)
-      let token = await getToken();
-      if (!token) return toast.error("Please log in to continue");
-
-      const { data } = await axios.get('/get-user-creations', {
-        headers: { Authorization: `Bearer ${token}` }
+      const {data} = await axios.get('/api/creation/user-creations', {
+        headers: {
+          Authorization: `Bearer ${await getToken()}`,
+        },
       })
-
-      // debugging
-      // console.log('API Response:', data);
-
-      if (data.success && data.data.length > 0) {
-        // console.log('Data Success : ', data.success)
-        setCreations(data.data)
-        toast.success(data.message || 'User Creations loaded successfully!');
+      if(data?.success){
+        setCreations(data.creations);
+      }else{
+        toast.error(data.message);
       }
-      else {
-        toast.error(data.message || 'Failed to load user creations')
-      }
-
     } catch (error) {
-      // console.log('API error:', error);
-      toast.error(`Error: ${error.message}`);
+      toast.error(error.message);
     }
-    finally {
-      setLoading(false);
-    }
+    setLoading(false);
   };
 
   useEffect(() => {
