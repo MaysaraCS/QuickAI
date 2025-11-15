@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import axios from 'axios';
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
-import ReactMarkdown from "react-markdown";
+import Markdown from "react-markdown";
 
 // Set the base URL for axios
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
@@ -33,13 +33,14 @@ const WriteArticle = () => {
         prompt, 
         length: selectedLength.length
       }, {
-        headers: { Authorization: `Bearer ${await getToken()}` }
-      });
+        headers: { Authorization: `Bearer ${await getToken()}`}});
 
-      if (data.success && data.data.length > 0) {
-        console.log('Data Success : ', data.success);
+      if (data.success) {
+        setContent('Data Success : ', data.success);
+      }else{
+        toast.error(data.message)
       }
-    } catch (error) { // Moved catch to proper position
+    } catch (error) { 
       toast.error(error.message);
     }
     setLoading(false);
@@ -117,9 +118,9 @@ const WriteArticle = () => {
         ) : (
           <div className="mt-3 h-full overflow-y-scroll text-sm text-slate-600">
             <div className="reset-tw">
-              <ReactMarkdown>
+              <Markdown>
                 {content}
-              </ReactMarkdown>
+              </Markdown>
             </div>
           </div>
         )}

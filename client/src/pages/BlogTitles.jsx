@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
-import ReactMarkdown from "react-markdown";
+import Markdown from "react-markdown";
 
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
@@ -20,7 +20,7 @@ const BlogTitles = () => {
   ];
 
   const [selectedCategory, setSelectedCategory] = useState(blogCategories['General']);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
 
   const [loading, setLoading] = useState(false)
   const [content, setContent] = useState('');
@@ -31,50 +31,22 @@ const BlogTitles = () => {
     e.preventDefault();
 
     try {
-      setLoading(true)
-
-      // Handle potential auth token issues
-      let token;
-      try {
-        token = await getToken();
-        if (!token) {
-          toast.error('Please log in to continue');
-          return;
-        }
-      } catch (authError) {
-        console.log('Auth error:', authError);
-        toast.error('Authentication failed. Please check your internet connection and try logging in again.');
-        return;
-      }
-
+      setLoading(true);
       const prompt = `Generate a blog title for the keyword ${input} in the category ${selectedCategory}`;
-
       const { data } = await axios.post('/ai/generate-blog-title', {
         prompt
       }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
-      // debugging
-      console.log('API Response:', data);
-
-      if (data.success && data.data.length > 0) {
-        console.log('Data Success : ', data.success)
-        setContent(data.data[0].content)
-        toast.success(data.message || 'Blog Title generated successfully!');
+        headers: { Authorization: `Bearer ${await getToken()}`}});
+      if (data.success) {
+        setContent('Data Success : ', data.success);
+      }else{
+        toast.error(data.message)
       }
-      else {
-        toast.error(data.message || 'Failed to generate blog title')
-      }
-
     } catch (error) {
-      console.log('API error:', error);
-      toast.error(`Error: ${error.message}`);
+      toast.error(error.message)
     }
-    finally {
-      setLoading(false);
-    }
-  };
+    setLoading(false);
+  }
 
   return (
     <div className="h-full overflow-y-scroll p-6 flex items-start flex-wrap gap-4 text-slate-700">
@@ -145,9 +117,9 @@ const BlogTitles = () => {
             ) : (
               <div className="mt-3 h-full overflow-y-scroll text-sm text-slate-600">
                 <div className="reset-tw">
-                  <ReactMarkdown>
+                  <Markdown>
                     {content}
-                  </ReactMarkdown>
+                  </Markdown>
                 </div>
               </div>
             )
