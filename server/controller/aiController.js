@@ -1,13 +1,15 @@
 import OpenAI from "openai";
-import { sql } from "../config/db.js";
+import sql from "../configs/db.js";
 import axios from 'axios';
 import { v2 as cloudinary } from 'cloudinary';
-import { clerkClient } from '@clerk/clerk-sdk-node';
+import { clerkClient } from '@clerk/express';
 import fs from 'fs';
-import pdf from 'pdf-parse/lib/pdf-parse.js';
+import FormData from 'form-data';
+import { createRequire } from 'module';
 
-// Assuming asyncHandler is a custom middleware - you'll need to import it from your utils
-// import { asyncHandler } from "../utils/asyncHandler.js";
+// Create require for CommonJS modules
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 
 const asyncHandler = (fn) => (req, res, next) => {
     Promise.resolve(fn(req, res, next)).catch(next);
@@ -20,7 +22,7 @@ const AI = new OpenAI({
 
 export const generateArticle = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth();
+        const { userId } = req.auth;
         const { prompt, length } = req.body;
         const plan = req.plan;
         const free_usage = req.free_usage;
@@ -30,7 +32,7 @@ export const generateArticle = asyncHandler(async (req, res) => {
         }
 
         const response = await AI.chat.completions.create({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.0-flash-exp",
             messages: [
                 {
                     role: "user",
@@ -61,7 +63,7 @@ export const generateArticle = asyncHandler(async (req, res) => {
 
 export const generateBlogTitle = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth();
+        const { userId } = req.auth;
         const { prompt } = req.body;
         const plan = req.plan;
         const free_usage = req.free_usage;
@@ -71,7 +73,7 @@ export const generateBlogTitle = asyncHandler(async (req, res) => {
         }
 
         const response = await AI.chat.completions.create({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.0-flash-exp",
             messages: [
                 {
                     role: "user",
@@ -103,16 +105,22 @@ export const generateBlogTitle = asyncHandler(async (req, res) => {
 
 export const generateImage = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth();
+        const { userId } = req.auth;
         const { prompt, publish } = req.body;
         const plan = req.plan;
 
         if (plan !== 'premium') {
             return res.json({ success: false, message: "This feature is only available for premium subscriptions." });
         }
+
+        const formData = new FormData();
+        formData.append('prompt', prompt);
         
         const response = await axios.post("https://clipdrop-api.co/text-to-image/v1", formData, {
-            headers: { 'x-api-key': process.env.CLIPDROP_API_KEY },
+            headers: { 
+                'x-api-key': process.env.CLIPDROP_API_KEY,
+                ...formData.getHeaders()
+            },
             responseType: "arraybuffer",
         });
 
@@ -129,28 +137,35 @@ export const generateImage = asyncHandler(async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 });
-export const removeImageBackground  = asyncHandler(async (req, res) => {
+
+export const removeImageBackground = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth();
-        const {image} = req.file;
+        const { userId } = req.auth;
+        const image = req.file;
         const plan = req.plan;
 
         if (plan !== 'premium') {
             return res.json({ success: false, message: "This feature is only available for premium subscriptions." });
         }
 
+        if (!image) {
+            return res.json({ success: false, message: "No image file uploaded." });
+        }
 
-        const { secure_url } = await cloudinary.uploader.upload(image.path,{
+        const { secure_url } = await cloudinary.uploader.upload(image.path, {
             transformation: [
                 {
-                    effect: 'background_removal' ,
+                    effect: 'background_removal',
                     background_removal: 'remove_the_background'
                 }
             ]
         });
 
+        // Clean up uploaded file
+        fs.unlinkSync(image.path);
+
         await sql`INSERT INTO creations (user_id, prompt, content, type) 
-        VALUES (${userId}, 'Remove background from image', ${imageUrl}, 'image')`;
+        VALUES (${userId}, 'Remove background from image', ${secure_url}, 'image')`;
 
         res.json({ success: true, content: secure_url });
         
@@ -159,24 +174,35 @@ export const removeImageBackground  = asyncHandler(async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 });
-export const removeImageObject   = asyncHandler(async (req, res) => {
+
+export const removeImageObject = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth();
-        const { object } = req.auth();
-        const {image} = req.file;
+        const { userId } = req.auth;
+        const { object } = req.body;
+        const image = req.file;
         const plan = req.plan;
 
         if (plan !== 'premium') {
             return res.json({ success: false, message: "This feature is only available for premium subscriptions." });
         }
 
-        
+        if (!image) {
+            return res.json({ success: false, message: "No image file uploaded." });
+        }
+
+        if (!object) {
+            return res.json({ success: false, message: "Please specify the object to remove." });
+        }
 
         const { public_id } = await cloudinary.uploader.upload(image.path);
+        
+        // Clean up uploaded file
+        fs.unlinkSync(image.path);
+
         const imageUrl = cloudinary.url(public_id, {
-            transformation: [{effect: `gen_removal:${object}`}],
+            transformation: [{ effect: `gen_remove:${object}` }],
             resource_type: 'image',
-        })
+        });
 
         await sql`INSERT INTO creations (user_id, prompt, content, type) 
             VALUES (${userId}, ${`Removed ${object} from image`}, ${imageUrl}, 'image')`;
@@ -188,9 +214,10 @@ export const removeImageObject   = asyncHandler(async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 });
-export const resumeReview    = asyncHandler(async (req, res) => {
+
+export const resumeReview = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth();
+        const { userId } = req.auth;
         const resume = req.file;
         const plan = req.plan;
 
@@ -198,17 +225,24 @@ export const resumeReview    = asyncHandler(async (req, res) => {
             return res.json({ success: false, message: "This feature is only available for premium subscriptions." });
         }
 
-        if(resume.size > 5 * 1024 * 1024){
+        if (!resume) {
+            return res.json({ success: false, message: "No resume file uploaded." });
+        }
+
+        if (resume.size > 5 * 1024 * 1024) {
             return res.json({ success: false, message: "File size exceeds 5MB limit." });
         }
 
         const dataBuffer = fs.readFileSync(resume.path);
-        const pdfData = await pdf(dataBuffer);  // getting pdf -> text
-        const prompt = `Review the following resume and provide constructive feedback on its strengths, weaknesses, and areas for improvement. Resume Content :\n\n${pdfData.text}`;
+        const pdfData = await pdf(dataBuffer);
+        
+        // Clean up uploaded file
+        fs.unlinkSync(resume.path);
 
+        const prompt = `Review the following resume and provide constructive feedback on its strengths, weaknesses, and areas for improvement. Resume Content:\n\n${pdfData.text}`;
 
         const response = await AI.chat.completions.create({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.0-flash-exp",
             messages: [
                 {
                     role: "user",
@@ -218,10 +252,11 @@ export const resumeReview    = asyncHandler(async (req, res) => {
             temperature: 0.7,
             max_tokens: 1000,
         });
+
         const content = response.choices[0]?.message?.content;
 
         await sql`INSERT INTO creations (user_id, prompt, content, type) 
-            VALUES (${userId},'Review the uploaded resume', ${content}, 'resume-review')`;
+            VALUES (${userId}, 'Review the uploaded resume', ${content}, 'resume-review')`;
 
         res.json({ success: true, content });
 
@@ -230,4 +265,3 @@ export const resumeReview    = asyncHandler(async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 });
-
