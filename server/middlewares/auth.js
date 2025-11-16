@@ -1,9 +1,15 @@
 import { clerkClient } from "@clerk/express";
 
+// Simple in-memory cache to reduce Clerk API calls
+const userCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // Middleware to check userId and hasPremiumPlan
 export const auth = async (req, res, next) => {
     try {
-        const { userId, has } = req.auth;
+        // Call req.auth() as a function (NEW API)
+        const authData = await req.auth();
+        const { userId, has } = authData;
         
         if (!userId) {
             return res.status(401).json({ 
@@ -12,46 +18,52 @@ export const auth = async (req, res, next) => {
             });
         }
 
+        // Check cache first to reduce API calls
+        const cached = userCache.get(userId);
+        const now = Date.now();
+        
+        if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+            console.log('Using cached user data for:', userId);
+            req.plan = cached.plan;
+            req.free_usage = cached.free_usage;
+            return next();
+        }
+
         // Check for premium plan
         const hasPremiumPlan = await has({ plan: 'premium' });
         
-        // Get user metadata (with retry logic for rate limits)
-        let user;
-        let retries = 3;
-        while (retries > 0) {
-            try {
-                user = await clerkClient.users.getUser(userId);
-                break;
-            } catch (error) {
-                if (error.status === 429 && retries > 1) {
-                    console.log(`Rate limited, retrying... (${retries - 1} attempts left)`);
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-                    retries--;
-                } else {
-                    throw error;
-                }
-            }
-        }
-
+        let free_usage = 0;
+        
         if (!hasPremiumPlan) {
-            if (user.privateMetadata?.free_usage !== undefined) {
-                req.free_usage = user.privateMetadata.free_usage;
-            } else {
-                // Try to set initial free usage
-                try {
+            try {
+                const user = await clerkClient.users.getUser(userId);
+                
+                if (user.privateMetadata?.free_usage !== undefined) {
+                    free_usage = user.privateMetadata.free_usage;
+                } else {
                     await clerkClient.users.updateUserMetadata(userId, {
                         privateMetadata: { free_usage: 0 }
                     });
-                    req.free_usage = 0;
-                } catch (updateError) {
-                    console.error('Failed to update user metadata:', updateError);
-                    // Default to 0 if update fails
-                    req.free_usage = 0;
+                    free_usage = 0;
                 }
+            } catch (error) {
+                console.error('Failed to fetch user metadata:', error);
+                // Use default value if Clerk API fails
+                free_usage = 0;
             }
         }
         
-        req.plan = hasPremiumPlan ? 'premium' : 'free';
+        const plan = hasPremiumPlan ? 'premium' : 'free';
+        
+        // Cache the result
+        userCache.set(userId, {
+            plan,
+            free_usage,
+            timestamp: now
+        });
+        
+        req.plan = plan;
+        req.free_usage = free_usage;
         next();
     } catch (error) {
         console.error('Auth middleware error:', error);
@@ -60,7 +72,7 @@ export const auth = async (req, res, next) => {
         if (error.status === 429) {
             return res.status(429).json({ 
                 success: false, 
-                message: "Rate limit exceeded. Please wait a moment and try again. Consider upgrading to production Clerk keys."
+                message: "Rate limit exceeded. Please wait a moment and try again."
             });
         }
         
@@ -70,3 +82,13 @@ export const auth = async (req, res, next) => {
         });
     }
 }
+
+// Clear stale cache entries periodically (every 10 minutes)
+setInterval(() => {
+    const now = Date.now();
+    for (const [userId, data] of userCache.entries()) {
+        if (now - data.timestamp > CACHE_DURATION) {
+            userCache.delete(userId);
+        }
+    }
+}, 10 * 60 * 1000);

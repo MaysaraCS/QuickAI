@@ -22,7 +22,10 @@ const AI = new OpenAI({
 
 export const generateArticle = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth;
+        // Get userId from the auth middleware (already processed)
+        const authData = await req.auth();
+        const { userId } = authData;
+        
         const { prompt, length } = req.body;
         const plan = req.plan;
         const free_usage = req.free_usage;
@@ -56,14 +59,16 @@ export const generateArticle = asyncHandler(async (req, res) => {
         }
         res.json({ success: true, content });
     } catch (error) {
-        console.log(error.message);
+        console.log('Generate article error:', error.message);
         res.json({ success: false, message: error.message });
     }
 });
 
 export const generateBlogTitle = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth;
+        const authData = await req.auth();
+        const { userId } = authData;
+        
         const { prompt } = req.body;
         const plan = req.plan;
         const free_usage = req.free_usage;
@@ -98,14 +103,16 @@ export const generateBlogTitle = asyncHandler(async (req, res) => {
         }
         res.json({ success: true, content });
     } catch (error) {
-        console.log(error.message);
+        console.log('Generate blog title error:', error.message);
         res.json({ success: false, message: error.message });
     }
 });
 
 export const generateImage = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth;
+        const authData = await req.auth();
+        const { userId } = authData;
+        
         const { prompt, publish } = req.body;
         const plan = req.plan;
 
@@ -133,14 +140,16 @@ export const generateImage = asyncHandler(async (req, res) => {
 
         res.json({ success: true, content: secure_url });
     } catch (error) {
-        console.log(error.message);
+        console.log('Generate image error:', error.message);
         res.json({ success: false, message: error.message });
     }
 });
 
 export const removeImageBackground = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth;
+        const authData = await req.auth();
+        const { userId } = authData;
+        
         const image = req.file;
         const plan = req.plan;
 
@@ -170,14 +179,16 @@ export const removeImageBackground = asyncHandler(async (req, res) => {
         res.json({ success: true, content: secure_url });
         
     } catch (error) {
-        console.log(error.message);
+        console.log('Remove background error:', error.message);
         res.json({ success: false, message: error.message });
     }
 });
 
 export const removeImageObject = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth;
+        const authData = await req.auth();
+        const { userId } = authData;
+        
         const { object } = req.body;
         const image = req.file;
         const plan = req.plan;
@@ -210,14 +221,16 @@ export const removeImageObject = asyncHandler(async (req, res) => {
         res.json({ success: true, content: imageUrl });
 
     } catch (error) {
-        console.log(error.message);
+        console.log('Remove object error:', error.message);
         res.json({ success: false, message: error.message });
     }
 });
 
 export const resumeReview = asyncHandler(async (req, res) => {
     try {
-        const { userId } = req.auth;
+        const authData = await req.auth();
+        const { userId } = authData;
+        
         const resume = req.file;
         const plan = req.plan;
 
@@ -261,7 +274,7 @@ export const resumeReview = asyncHandler(async (req, res) => {
         res.json({ success: true, content });
 
     } catch (error) {
-        console.log(error.message);
+        console.log('Resume review error:', error.message);
         res.json({ success: false, message: error.message });
     }
 });
